@@ -1,4 +1,3 @@
-// toastConfig.tsx
 import React from "react";
 import { View, Text, StyleSheet, Image, Pressable } from "react-native";
 import { BaseToastProps } from "react-native-toast-message";
@@ -6,7 +5,7 @@ import Toast from "react-native-toast-message";
 
 export const toastConfig = {
   success: ({ text1 }: BaseToastProps) => (
-    <ToastWindow title="🖥️ stampplus.exe" main="Success" text1={text1} />
+    <ToastWindow title="🖥️ stampplus.exe" main="Success" text1={text1} isEnglish />
   ),
   info: ({ text1 }: BaseToastProps) => (
     <ToastWindow title="🖥️ info.exe" main="情報" text1={text1} />
@@ -31,20 +30,20 @@ function ToastWindow({
   text1,
   confirm = false,
   onConfirm,
+  isEnglish = false,
 }: {
   title: string;
   main: string;
   text1?: string;
   confirm?: boolean;
   onConfirm?: () => void;
+  isEnglish?: boolean;
 }) {
   return (
     <View style={styles.container}>
       <View style={styles.titleBar}>
         <Text style={styles.windowTitle}>{title}</Text>
-        <Text style={styles.closeButton} onPress={() => Toast.hide()}>
-          ✕
-        </Text>
+        <Text style={styles.closeButton} onPress={() => Toast.hide()}>✕</Text>
       </View>
       <View style={styles.content}>
         <Image
@@ -52,7 +51,7 @@ function ToastWindow({
           style={styles.icon}
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>{main}</Text>
+          <Text style={[styles.mainTitle, isEnglish ? styles.en : styles.jp]}>{main}</Text>
           <Text style={styles.subtitle}>{text1}</Text>
           {confirm ? (
             <View style={styles.confirmButtons}>
@@ -119,9 +118,8 @@ const styles = StyleSheet.create({
     height: 28,
     marginRight: 10,
   },
-  title: {
-    fontFamily: "PixelifySans-Regular",
-    fontSize: 13,
+  mainTitle: {
+    fontSize: 15,
     color: "#333",
   },
   subtitle: {
@@ -150,12 +148,18 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   okText: {
-    fontFamily: "x12y12pxMaruMinyaM", // ✅ ボタンのフォント
+    fontFamily: "MaruMinya",
     fontSize: 13,
     color: "#333",
   },
   confirmButtons: {
     flexDirection: "row",
     marginTop: 8,
+  },
+  en: {
+    fontFamily: "PixelifySans-Regular",
+  },
+  jp: {
+    fontFamily: "MaruMinya",
   },
 });
