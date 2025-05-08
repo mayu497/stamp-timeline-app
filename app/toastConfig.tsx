@@ -1,3 +1,4 @@
+// toastConfig.tsx
 import React from "react";
 import { View, Text, StyleSheet, Image, Pressable } from "react-native";
 import { BaseToastProps } from "react-native-toast-message";
@@ -5,33 +6,45 @@ import Toast from "react-native-toast-message";
 
 export const toastConfig = {
   success: ({ text1 }: BaseToastProps) => (
-    <ToastWindow title="🖥️ stampplus.exe" icon="stream-icon.png" main="Success" text1={text1} />
+    <ToastWindow title="🖥️ stampplus.exe" main="Success" text1={text1} />
   ),
   info: ({ text1 }: BaseToastProps) => (
-    <ToastWindow title="🖥️ info.exe" icon="stream-icon.png" main="情報" text1={text1} />
+    <ToastWindow title="🖥️ info.exe" main="情報" text1={text1} />
   ),
   error: ({ text1 }: BaseToastProps) => (
-    <ToastWindow title="🖥️ error.exe" icon="stream-icon.png" main="エラー" text1={text1} />
+    <ToastWindow title="🖥️ error.exe" main="エラー" text1={text1} />
+  ),
+  confirm: ({ text1, props }: BaseToastProps & { props?: { onConfirm: () => void } }) => (
+    <ToastWindow
+      title="🖥️ delete.exe"
+      main="確認"
+      text1={text1}
+      confirm
+      onConfirm={props?.onConfirm}
+    />
   ),
 };
 
-// 共通ウィンドウデザイン
 function ToastWindow({
   title,
-  icon,
   main,
   text1,
+  confirm = false,
+  onConfirm,
 }: {
   title: string;
-  icon: string;
   main: string;
   text1?: string;
+  confirm?: boolean;
+  onConfirm?: () => void;
 }) {
   return (
     <View style={styles.container}>
       <View style={styles.titleBar}>
         <Text style={styles.windowTitle}>{title}</Text>
-        <Text style={styles.closeButton}>✕</Text>
+        <Text style={styles.closeButton} onPress={() => Toast.hide()}>
+          ✕
+        </Text>
       </View>
       <View style={styles.content}>
         <Image
@@ -41,9 +54,26 @@ function ToastWindow({
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>{main}</Text>
           <Text style={styles.subtitle}>{text1}</Text>
-          <Pressable style={styles.okButton} onPress={() => Toast.hide()}>
-            <Text style={styles.okText}>OK</Text>
-          </Pressable>
+          {confirm ? (
+            <View style={styles.confirmButtons}>
+              <Pressable
+                style={styles.okButton}
+                onPress={() => {
+                  Toast.hide();
+                  onConfirm?.();
+                }}
+              >
+                <Text style={styles.okText}>はい</Text>
+              </Pressable>
+              <Pressable style={styles.okButton} onPress={() => Toast.hide()}>
+                <Text style={styles.okText}>いいえ</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable style={styles.okButton} onPress={() => Toast.hide()}>
+              <Text style={styles.okText}>OK</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </View>
@@ -109,6 +139,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     marginTop: 8,
+    marginRight: 10,
     alignSelf: "flex-start",
     borderRadius: 4,
     borderWidth: 1,
@@ -119,8 +150,12 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   okText: {
-    fontFamily: "PixelifySans-Regular",
+    fontFamily: "x12y12pxMaruMinyaM", // ✅ ボタンのフォント
     fontSize: 13,
     color: "#333",
+  },
+  confirmButtons: {
+    flexDirection: "row",
+    marginTop: 8,
   },
 });
