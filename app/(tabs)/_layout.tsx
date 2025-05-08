@@ -1,0 +1,13 @@
+// app/(tabs)/_layout.tsx
+import { Tabs } from "expo-router";
+
+export default function TabLayout() {
+  return (
+    <Tabs>
+      <Tabs.Screen name="index" options={{ title: "Home" }} />
+      <Tabs.Screen name="timeline" options={{ title: "Timeline" }} />
+      <Tabs.Screen name="stampcard" options={{ title: "StampCard" }} />
+      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+    </Tabs>
+  );
+}
