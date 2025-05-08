@@ -98,7 +98,6 @@ export default function StampCard() {
         slot,
         imageUri: stampImageUri,
       });
-      console.log("✅ スタンプを押しました: slot", slot);
 
       const currentUser = firebaseAuth.currentUser;
       if (currentUser) {
@@ -108,7 +107,6 @@ export default function StampCard() {
           timestamp: Timestamp.now(),
           imageUri: stampImageUri,
         });
-        console.log("📣 通知を追加しました");
       }
     } catch (err) {
       console.error("スタンプ押下失敗:", err);
@@ -119,8 +117,8 @@ export default function StampCard() {
     const globalSlot = pageIndex * 10 + slot;
     const found = stamps.find((s) => s.slot === globalSlot);
     const isUnlocked = globalSlot < allowedSlots;
-    const top = `${Math.floor(slot / 5) * 45 + 5}%`;
-    const left = `${(slot % 5) * 17 + 4}%`;
+    const top = `${Math.floor(slot / 5) * 45 + 13.7}%`;
+    const left = `${(slot % 5) * 17 + 7.7}%`;
 
     return (
       <TouchableOpacity
@@ -141,66 +139,95 @@ export default function StampCard() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>🌟 スタンプカード</Text>
+      <View style={styles.window}>
+        <View style={styles.titleBar}>
+          <Text style={styles.titleText}>✦ stampcard.exe</Text>
+          <Text style={styles.closeIcon}>×</Text>
+        </View>
 
-      <ScrollView
-        horizontal
-        pagingEnabled
-        ref={scrollViewRef}
-        onScroll={(e) => {
-          const page = Math.round(e.nativeEvent.contentOffset.x / (windowWidth - 40));
-          setCurrentPage(page);
-        }}
-        scrollEventThrottle={16}
-        style={{ width: "100%" }}
-        showsHorizontalScrollIndicator={false}
-      >
-        {Array.from({ length: pageCount }).map((_, pageIndex) => (
-          <View key={pageIndex} style={styles.boardWrapper}>
-            <ImageBackground
-              source={backgroundImageUri ? { uri: backgroundImageUri } : defaultBackground}
-              style={styles.board}
-              imageStyle={{ resizeMode: "cover", borderRadius: 12 }}
+        <ScrollView
+          horizontal
+          pagingEnabled
+          ref={scrollViewRef}
+          onScroll={(e) => {
+            const page = Math.round(e.nativeEvent.contentOffset.x / (windowWidth - 40));
+            setCurrentPage(page);
+          }}
+          scrollEventThrottle={16}
+          style={{ width: "100%" }}
+          showsHorizontalScrollIndicator={false}
+        >
+          {Array.from({ length: pageCount }).map((_, pageIndex) => (
+            <View key={pageIndex} style={styles.boardWrapper}>
+              <ImageBackground
+                source={backgroundImageUri ? { uri: backgroundImageUri } : defaultBackground}
+                style={styles.board}
+                imageStyle={{ resizeMode: "cover", borderRadius: 12 }}
+              >
+                {Array.from({ length: 10 }).map((_, i) => renderStampSlot(i, pageIndex))}
+              </ImageBackground>
+            </View>
+          ))}
+        </ScrollView>
+
+        <View style={styles.pageNumbers}>
+          {Array.from({ length: pageCount }).map((_, idx) => (
+            <TouchableOpacity
+              key={idx}
+              style={[styles.pageNumberButton, currentPage === idx && styles.pageNumberActive]}
+              onPress={() => {
+                scrollViewRef.current?.scrollTo({ x: idx * (windowWidth - 40), animated: true });
+              }}
             >
-              {Array.from({ length: 10 }).map((_, i) => renderStampSlot(i, pageIndex))}
-            </ImageBackground>
-          </View>
-        ))}
-      </ScrollView>
+              <Text style={styles.pageNumberText}>{idx + 1}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-      <View style={styles.pageNumbers}>
-        {Array.from({ length: pageCount }).map((_, idx) => (
-          <TouchableOpacity
-            key={idx}
-            style={[styles.pageNumberButton, currentPage === idx && styles.pageNumberActive]}
-            onPress={() => {
-              scrollViewRef.current?.scrollTo({ x: idx * (windowWidth - 40), animated: true });
-            }}
-          >
-            <Text style={styles.pageNumberText}>{idx + 1}</Text>
-          </TouchableOpacity>
-        ))}
+        {currentUid === viewingUid && (
+          <>
+            <Text onPress={() => router.push("/StampManageScreen")} style={styles.link}>スタンプ管理</Text>
+            <Text onPress={() => router.push("/StampGiverScreen")} style={styles.link}>スタンプを押す</Text>
+          </>
+        )}
       </View>
-
-      {currentUid === viewingUid && (
-        <>
-          <Text onPress={() => router.push("/StampManageScreen")} style={styles.link}>スタンプ管理</Text>
-          <Text onPress={() => router.push("/StampGiverScreen")} style={styles.link}>スタンプを押す</Text>
-        </>
-      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
-    backgroundColor: "#fff",
+    padding: 10,
+    backgroundColor: "#e5e5eb",
   },
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 12,
+  window: {
+    borderWidth: 4,
+    borderColor: "#666677",
+    backgroundColor: "#f0f0f5",
+    shadowColor: "#666677",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    paddingBottom: 16,
+    marginHorizontal: 10,
+  },
+  titleBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#8888a0",
+    padding: 8,
+    borderBottomWidth: 2,
+    borderColor: "#666677",
+  },
+  titleText: {
+    fontFamily: "PixelifySans-Regular", // .exe名は英語風フォント
+    fontSize: 16,
+    color: "#fff",
+  },
+  closeIcon: {
+    fontFamily: "PixelifySans-Regular",
+    fontSize: 16,
+    color: "#fff",
   },
   boardWrapper: {
     width: windowWidth - 40,
@@ -208,6 +235,7 @@ const styles = StyleSheet.create({
     marginRight: 20,
     borderRadius: 12,
     overflow: "hidden",
+    alignSelf: "center",
   },
   board: {
     width: "100%",
@@ -243,9 +271,10 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
   },
   link: {
-    color: "blue",
-    marginTop: 16,
+    color: "#3b3355",
     textAlign: "center",
+    marginTop: 10,
+    fontFamily: "MaruMinya",
   },
   pageNumbers: {
     flexDirection: "row",
@@ -262,10 +291,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   pageNumberActive: {
-    backgroundColor: "#2196F3",
+    backgroundColor: "#8888a0",
   },
   pageNumberText: {
-    color: "#000",
+    color: "#3b3355",
     fontWeight: "bold",
+    fontFamily: "PixelifySans-Regular",
   },
 });

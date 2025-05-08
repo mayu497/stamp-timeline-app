@@ -1,17 +1,15 @@
 import "react-native-get-random-values";
 import { v4 as uuidv4 } from "uuid";
-
 import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   TextInput,
-  Button,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Dimensions,
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
 import { db, firebaseAuth } from "../../firebase/firebase";
 import {
   doc,
@@ -23,6 +21,10 @@ import {
 import { onAuthStateChanged, User } from "firebase/auth";
 import { useRouter } from "expo-router";
 
+const windowWidth = Dimensions.get("window").width;
+const jpFont = "MaruMinya";
+const enFont = "PixelifySans-Regular";
+
 export default function HomeScreen() {
   const router = useRouter();
   const [inputValue, setInputValue] = useState("");
@@ -33,11 +35,9 @@ export default function HomeScreen() {
   const [comment, setComment] = useState("");
   const [user, setUser] = useState<User | null>(null);
 
-  // ✅ Firestoreにユーザー初期データを登録する関数
   const initializeUserDocument = async (user: User) => {
     const userDocRef = doc(db, "users", user.uid);
     const docSnap = await getDoc(userDocRef);
-
     if (!docSnap.exists()) {
       await setDoc(userDocRef, {
         uid: user.uid,
@@ -50,20 +50,6 @@ export default function HomeScreen() {
           { type: "pages", value: 10 },
         ],
       });
-      console.log("🆕 ユーザー情報をFirestoreに保存しました");
-    } else {
-      const existingData = docSnap.data();
-      if (!existingData.stampConditions || existingData.stampConditions.length === 0) {
-        await setDoc(userDocRef, {
-          stampConditions: [
-            { type: "hours", value: 1 },
-            { type: "pages", value: 10 },
-          ],
-        }, { merge: true });
-        console.log("✅ 既存ユーザーに stampConditions を追加しました");
-      } else {
-        console.log("✅ ユーザー情報はすでに存在します");
-      }
     }
   };
 
@@ -84,24 +70,16 @@ export default function HomeScreen() {
   }, [user]);
 
   const saveMaterialList = async (list: string[]) => {
-    try {
-      const docRef = doc(db, "materials", user!.uid);
-      await setDoc(docRef, { list }, { merge: true });
-    } catch (error) {
-      console.error("教材保存失敗:", error);
-    }
+    const docRef = doc(db, "materials", user!.uid);
+    await setDoc(docRef, { list }, { merge: true });
   };
 
   const loadMaterials = async () => {
-    try {
-      const docRef = doc(db, "materials", user!.uid);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setMaterialList(data.list || []);
-      }
-    } catch (error) {
-      console.error("教材読み込み失敗:", error);
+    const docRef = doc(db, "materials", user!.uid);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      setMaterialList(data.list || []);
     }
   };
 
@@ -123,152 +101,240 @@ export default function HomeScreen() {
 
   const saveRecord = async () => {
     if (!inputValue || !selectedMaterial || !user) return;
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    const profile = userDoc.exists() ? userDoc.data() : {};
+    const value = parseFloat(inputValue);
 
-    try {
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      const profile = userDoc.exists() ? userDoc.data() : {};
+    const recordData: any = {
+      uid: user.uid,
+      material: selectedMaterial,
+      comment: comment.trim(),
+      recordedAt: Timestamp.now(),
+      userName: profile.name || "匿名",
+      iconUri: profile.customImageUri || null,
+      selectedIconIndex: profile.selectedIconIndex ?? 0,
+      [conditionType]: value,
+    };
 
-      const recordData: any = {
-        uid: user.uid,
-        material: selectedMaterial,
-        comment: comment.trim(),
-        recordedAt: Timestamp.now(),
-        userName: profile.name || "匿名",
-        iconUri: profile.customImageUri || null,
-        selectedIconIndex: profile.selectedIconIndex ?? 0,
-      };
+    await setDoc(doc(db, "records", uuidv4()), recordData);
 
-      const value = parseFloat(inputValue);
-      if (conditionType === "hours") recordData.hours = value;
-      else if (conditionType === "pages") recordData.pages = value;
-      else if (conditionType === "questions") recordData.questions = value;
+    const summaryRef = doc(db, "recordSummary", user.uid, "summary", "summary");
+    await setDoc(summaryRef, {
+      totalHours: conditionType === "hours" ? increment(value) : increment(0),
+      totalPages: conditionType === "pages" ? increment(value) : increment(0),
+      totalQuestions: conditionType === "questions" ? increment(value) : increment(0),
+    }, { merge: true });
 
-      const recordRef = doc(db, "records", uuidv4());
-      await setDoc(recordRef, recordData);
-
-      const summaryRef = doc(db, "recordSummary", user.uid, "summary", "summary");
-      await setDoc(summaryRef, {
-        totalHours: conditionType === "hours" ? increment(value) : increment(0),
-        totalPages: conditionType === "pages" ? increment(value) : increment(0),
-        totalQuestions: conditionType === "questions" ? increment(value) : increment(0),
-      }, { merge: true });
-
-      setInputValue("");
-      setComment("");
-      router.push("/timeline");
-    } catch (error) {
-      console.error("記録保存エラー:", error);
-    }
+    setInputValue("");
+    setComment("");
+    router.push("/timeline");
   };
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>📚 勉強記録</Text>
+      <View style={styles.window}>
+        <View style={styles.titleBar}>
+          <Text style={styles.titleText}>✦ <Text style={styles.en}>home.exe</Text></Text>
+          <Text style={styles.en}>×</Text>
+        </View>
 
-      <Text>教材を追加してください</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="新しい教材名を入力"
-        value={newMaterial}
-        onChangeText={setNewMaterial}
-      />
-      <Button title="教材を追加" onPress={addMaterial} />
+        <View style={styles.body}>
+          <Text style={styles.heading}>📚 勉強記録</Text>
 
-      <Text style={styles.label}>教材を選択してください</Text>
-      {materialList.map((item, index) => (
-        <View key={index} style={styles.materialRow}>
-          <TouchableOpacity onPress={() => setSelectedMaterial(item)}>
-            <Text
-              style={[
-                styles.materialItem,
-                selectedMaterial === item && styles.selectedMaterial,
-              ]}
-            >
-              {item}
-            </Text>
+          <Text style={styles.label}>教材を追加してください</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="新しい教材名を入力"
+            value={newMaterial}
+            onChangeText={setNewMaterial}
+          />
+          <TouchableOpacity style={styles.button} onPress={addMaterial}>
+            <Text style={styles.buttonText}>＋ 教材を追加</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => deleteMaterial(item)}>
-            <Text style={styles.trash}>🗑️</Text>
+
+          <Text style={styles.label}>教材を選択してください</Text>
+          {materialList.map((item, index) => (
+            <View key={index} style={styles.materialRow}>
+              <TouchableOpacity onPress={() => setSelectedMaterial(item)}>
+                <Text
+                  style={[
+                    styles.materialItem,
+                    selectedMaterial === item && styles.selectedMaterial,
+                  ]}
+                >
+                  {item}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => deleteMaterial(item)}>
+                <Text style={styles.trash}>🗑️</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          <Text style={styles.label}>記録の種類を選んでください</Text>
+          <View style={styles.radioContainer}>
+            {["hours", "pages", "questions"].map((type) => (
+              <TouchableOpacity
+                key={type}
+                onPress={() => setConditionType(type as any)}
+                style={[
+                  styles.radioButton,
+                  conditionType === type && styles.radioButtonSelected,
+                ]}
+              >
+                <Text style={styles.radioLabel}>
+                  {type === "hours"
+                    ? "時間（hours）"
+                    : type === "pages"
+                    ? "ページ数（pages）"
+                    : "問題数（questions）"}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TextInput
+            style={styles.input}
+            placeholder="勉強量を入力"
+            keyboardType="numeric"
+            value={inputValue}
+            onChangeText={setInputValue}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="コメント（任意）"
+            value={comment}
+            onChangeText={setComment}
+          />
+
+          <TouchableOpacity style={styles.button} onPress={saveRecord}>
+            <Text style={styles.buttonText}>▶ 記録する</Text>
           </TouchableOpacity>
         </View>
-      ))}
-
-      <Text style={styles.label}>記録の種類を選んでください</Text>
-      <Picker
-        selectedValue={conditionType}
-        onValueChange={(itemValue) => setConditionType(itemValue)}
-        style={styles.picker}
-      >
-        <Picker.Item label="時間（hours）" value="hours" />
-        <Picker.Item label="ページ数（pages）" value="pages" />
-        <Picker.Item label="問題数（questions）" value="questions" />
-      </Picker>
-
-      <TextInput
-        style={styles.input}
-        placeholder="勉強量を入力"
-        keyboardType="numeric"
-        value={inputValue}
-        onChangeText={setInputValue}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="コメント（任意）"
-        value={comment}
-        onChangeText={setComment}
-      />
-
-      <Button title="記録する" onPress={saveRecord} />
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: "#e5e5eb",
     flex: 1,
-    padding: 20,
-    backgroundColor: "#fff",
   },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 20,
+  window: {
+    margin: 20,
+    borderWidth: 4,
+    borderColor: "#666677",
+    backgroundColor: "#f0f0f5",
+    shadowColor: "#666677",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+  },
+  titleBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#8888a0",
+    padding: 8,
+    borderBottomWidth: 2,
+    borderColor: "#666677",
+  },
+  titleText: {
+    fontFamily: jpFont,
+    fontSize: 16,
+    color: "#ffffff",
+  },
+  en: {
+    fontFamily: enFont,
+    fontSize: 16,
+    fontWeight: "normal",
+    color: "#ffffff",
+  },
+  body: {
+    padding: 16,
+  },
+  heading: {
+    fontFamily: jpFont,
+    fontSize: 18,
+    color: "#3b3355",
+    marginBottom: 12,
   },
   label: {
-    marginTop: 20,
-    marginBottom: 10,
+    fontFamily: jpFont,
+    fontSize: 14,
+    marginTop: 16,
+    marginBottom: 8,
+    color: "#333",
   },
   input: {
-    backgroundColor: "#eee",
+    backgroundColor: "#f4f4f4",
+    fontFamily: jpFont,
+    fontSize: 14,
     padding: 10,
     borderRadius: 5,
-    marginBottom: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#aaa",
   },
-  picker: {
-    marginBottom: 20,
-    backgroundColor: "#eee",
+  radioContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 16,
+  },
+  radioButton: {
+    borderWidth: 1,
+    borderColor: "#aaa",
+    backgroundColor: "#f4f4f4",
+    borderRadius: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  radioButtonSelected: {
+    backgroundColor: "#c4c4d4",
+    borderColor: "#3b3355",
+  },
+  radioLabel: {
+    fontFamily: jpFont,
+    fontSize: 14,
+    color: "#3b3355",
   },
   materialRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   materialItem: {
-    padding: 10,
+    fontFamily: jpFont,
+    fontSize: 14,
+    padding: 8,
     borderWidth: 1,
     borderRadius: 5,
     backgroundColor: "#f0f0f0",
     flex: 1,
   },
   selectedMaterial: {
-    backgroundColor: "#cde",
-    borderColor: "#00f",
+    backgroundColor: "#d6d6f5",
+    borderColor: "#3b3355",
   },
   trash: {
-    marginLeft: 10,
     fontSize: 18,
-    color: "red",
+    marginLeft: 8,
+  },
+  button: {
+    backgroundColor: "#c4c4d4",
+    paddingVertical: 10,
+    borderWidth: 2,
+    borderColor: "#666677",
+    borderRadius: 4,
+    marginBottom: 10,
+  },
+  buttonText: {
+    fontFamily: jpFont,
+    fontWeight: "normal",
+    fontSize: 14,
+    textAlign: "center",
+    color: "#3b3355",
   },
 });

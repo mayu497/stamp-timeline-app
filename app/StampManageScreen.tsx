@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  Button,
   Image,
   FlatList,
   TouchableOpacity,
@@ -13,6 +12,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { db, firebaseAuth } from "../firebase/firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
+import Toast from "react-native-toast-message";
 
 const defaultStamps = [
   "https://res.cloudinary.com/dgvd0srg2/image/upload/sumi_s4vcbu.png",
@@ -22,6 +22,9 @@ const defaultStamps = [
 const defaultBackgrounds = [
   "https://res.cloudinary.com/dgvd0srg2/image/upload/touka_zypqof.png",
 ];
+
+const jpFont = "MaruMinya";
+const enFont = "PixelifySans-Regular";
 
 export default function StampManageScreen() {
   const [selectedStamp, setSelectedStamp] = useState<number | null>(null);
@@ -100,7 +103,10 @@ export default function StampManageScreen() {
       { merge: true }
     );
 
-    alert("✅ 保存しました");
+    Toast.show({
+      type: "success",
+      text1: "保存しました！",
+    });
   };
 
   const loadSelection = async () => {
@@ -127,100 +133,121 @@ export default function StampManageScreen() {
     }
   };
 
+  const renderImageRow = (
+    data: string[],
+    selected: number | null,
+    set: (i: number) => void,
+    offset = 0
+  ) => (
+    <FlatList
+      horizontal
+      data={data}
+      keyExtractor={(uri, idx) => `${offset}_${idx}`}
+      renderItem={({ item, index }) => (
+        <TouchableOpacity onPress={() => set(index + offset)}>
+          <Image
+            source={{ uri: item }}
+            style={[styles.image, selected === index + offset && styles.selected]}
+          />
+        </TouchableOpacity>
+      )}
+    />
+  );
+
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>スタンプと背景を選択</Text>
+      <View style={styles.window}>
+        <View style={styles.titleBar}>
+          <Text style={styles.titleText}>✦ stampmanage.exe</Text>
+          <Text style={styles.closeIcon}>×</Text>
+        </View>
 
-      <Text>デフォルトスタンプ</Text>
-      <FlatList
-        horizontal
-        data={defaultStamps}
-        keyExtractor={(uri, idx) => `d${idx}`}
-        renderItem={({ item, index }) => (
-          <TouchableOpacity onPress={() => setSelectedStamp(index)}>
-            <Image
-              source={{ uri: item }}
-              style={[styles.image, selectedStamp === index && styles.selected]}
-            />
-          </TouchableOpacity>
-        )}
-      />
+        <Text style={styles.label}>デフォルトスタンプ</Text>
+        {renderImageRow(defaultStamps, selectedStamp, setSelectedStamp)}
 
-      <Text>アップロードしたスタンプ</Text>
-      <FlatList
-        horizontal
-        data={customStamps}
-        keyExtractor={(uri, idx) => `c${idx}`}
-        renderItem={({ item, index }) => {
-          const fullIndex = defaultStamps.length + index;
-          return (
-            <TouchableOpacity onPress={() => setSelectedStamp(fullIndex)}>
-              <Image
-                source={{ uri: item }}
-                style={[styles.image, selectedStamp === fullIndex && styles.selected]}
-              />
-            </TouchableOpacity>
-          );
-        }}
-      />
-      <Button title="スタンプ画像をアップロード" onPress={() => pickImage("stamp")} />
+        <Text style={styles.label}>アップロードしたスタンプ</Text>
+        {renderImageRow(customStamps, selectedStamp, setSelectedStamp, defaultStamps.length)}
 
-      <Text style={{ marginTop: 20 }}>背景画像</Text>
-      <FlatList
-        horizontal
-        data={defaultBackgrounds}
-        keyExtractor={(uri, idx) => `bd${idx}`}
-        renderItem={({ item, index }) => (
-          <TouchableOpacity onPress={() => setSelectedBackground(index)}>
-            <Image
-              source={{ uri: item }}
-              style={[styles.image, selectedBackground === index && styles.selected]}
-            />
-          </TouchableOpacity>
-        )}
-      />
+        <TouchableOpacity style={styles.button} onPress={() => pickImage("stamp")}>
+          <Text style={styles.buttonText}>スタンプ画像をアップロード</Text>
+        </TouchableOpacity>
 
-      <FlatList
-        horizontal
-        data={customBackgrounds}
-        keyExtractor={(uri, idx) => `bc${idx}`}
-        renderItem={({ item, index }) => {
-          const fullIndex = defaultBackgrounds.length + index;
-          return (
-            <TouchableOpacity onPress={() => setSelectedBackground(fullIndex)}>
-              <Image
-                source={{ uri: item }}
-                style={[styles.image, selectedBackground === fullIndex && styles.selected]}
-              />
-            </TouchableOpacity>
-          );
-        }}
-      />
-      <Button title="背景画像をアップロード" onPress={() => pickImage("background")} />
+        <Text style={styles.label}>背景画像</Text>
+        {renderImageRow(defaultBackgrounds, selectedBackground, setSelectedBackground)}
 
-      <Button title="保存" onPress={saveSelection} />
+        {renderImageRow(customBackgrounds, selectedBackground, setSelectedBackground, defaultBackgrounds.length)}
+
+        <TouchableOpacity style={[styles.button, { marginTop: 20 }]} onPress={saveSelection}>
+          <Text style={styles.buttonText}>✅ 保存</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
-    backgroundColor: "#fff",
+    backgroundColor: "#e5e5eb",
+    padding: 10,
+    flex: 1,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 20,
+  window: {
+    backgroundColor: "#f0f0f5",
+    borderWidth: 4,
+    borderColor: "#666677",
+    shadowColor: "#666677",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    paddingBottom: 20,
+  },
+  titleBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#b0a0d0",
+    padding: 8,
+    borderBottomWidth: 2,
+    borderColor: "#666677",
+  },
+  titleText: {
+    fontFamily: enFont,
+    fontSize: 16,
+    color: "#fff",
+  },
+  closeIcon: {
+    fontFamily: enFont,
+    fontSize: 16,
+    color: "#fff",
+  },
+  label: {
+    fontFamily: jpFont,
+    fontSize: 14,
+    marginTop: 16,
+    marginLeft: 10,
+    color: "#333",
   },
   image: {
-    width: 80,
-    height: 80,
-    margin: 5,
-    borderRadius: 10,
+    width: 72,
+    height: 72,
+    margin: 6,
+    borderRadius: 8,
+    backgroundColor: "#eee",
   },
   selected: {
     borderWidth: 3,
-    borderColor: "blue",
+    borderColor: "#8888a0",
+  },
+  button: {
+    backgroundColor: "#8888a0",
+    marginHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 6,
+    marginTop: 12,
+  },
+  buttonText: {
+    fontFamily: jpFont,
+    color: "#fff",
+    fontSize: 14,
+    textAlign: "center",
   },
 });
